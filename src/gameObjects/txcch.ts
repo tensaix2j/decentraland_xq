@@ -65,6 +65,7 @@ export class Txcch extends Entity {
 
 		this.create_pieces_from_FEN_string( this.xq_logic.generate_fen() );
 		this.create_guide_pieces();
+		this.reset_clickable();
 		
 	}
 
@@ -259,11 +260,10 @@ export class Txcch extends Entity {
 				-2, 
 				-2 
 			);
-
-			log( to_col , to_row, "has", dst_piece.rank , " eating it" );
+			//log( to_col , to_row, "has", dst_piece.rank , " eating it" );
 
 		} else {
-			log( to_col , to_row, "has nothing");
+			//log( to_col , to_row, "has nothing");
 		}
 
 		let src_piece = this.get_piece_by_col_row( frm_col , frm_row );
@@ -281,11 +281,24 @@ export class Txcch extends Entity {
 
 	}
 
+	//-----------
+	public reset_clickable() {
+
+		for ( let i = 0 ; i < this.pieces_arr.length ; i++ ) {
+			if ( this.pieces_arr[i].get_sidecolor_from_rank() == this.xq_logic.turn ) {
+				this.pieces_arr[i].enable_clickable();
+			} else {
+				this.pieces_arr[i].disable_clickable();
+			}
+		}
+	}
+
+
 
 	//------------------
 	public children_pieces_onclick( col , row , rank ) {
 
-		log( "children_pieces_onclick", rank , col, row );
+		//log( "children_pieces_onclick", rank , col, row );
 
 		if ( rank != null ) {
 			// Clicked on pieces
@@ -323,10 +336,11 @@ export class Txcch extends Entity {
 				let fr_col = "abcdefghi".indexOf( this.current_selection[0] );
 				let fr_row = parseInt( this.current_selection[1] );
 
-				log("Move approved ", this.current_selection + moving_to , fr_col , fr_row, col , row);
+				//log("Move approved ", this.current_selection + moving_to , fr_col , fr_row, col , row);
 				this.move_piece( fr_col , fr_row , col , row );
 				this.clear_guides();
 				this.current_selection = "";
+				this.reset_clickable();
 			}
 
 		}

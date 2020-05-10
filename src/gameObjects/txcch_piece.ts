@@ -10,6 +10,8 @@ export class Txcch_Piece extends Entity {
 	public row:number;
 	public transform:Transform;
 	public parent:Txcch;
+	public clickable:OnPointerDown;
+	public face_entity:Entity;
 	
 	constructor(
 			transform_args: TranformConstructorArgs,
@@ -60,13 +62,28 @@ export class Txcch_Piece extends Entity {
 		face_entity.addComponent( face_transform );
 		face_entity.addComponent( face_material );
 
-		face_entity.addComponent(
-			new OnPointerDown((e) => {
-				this.parent.children_pieces_onclick( this.col , this.row , this.rank );
-			})
-		)
-		
+		this.clickable = new OnPointerDown((e) => {
+			this.parent.children_pieces_onclick( this.col , this.row , this.rank );
+		})
+		this.face_entity = face_entity;
+			
 	}
+
+
+	//---------
+	public enable_clickable() {
+		if ( this.face_entity.getComponentOrNull(OnPointerDown) == null ) {
+			this.face_entity.addComponent( this.clickable);
+		}
+	}
+
+	//-----
+	public disable_clickable() {
+		if ( this.face_entity.getComponentOrNull(OnPointerDown) != null ) {
+			this.face_entity.removeComponent( OnPointerDown);
+		}
+	}
+
 
 
 	//---------
@@ -87,9 +104,9 @@ export class Txcch_Piece extends Entity {
 	public get_sidecolor_from_rank( ):string {
 
 		if ( this.rank.toLowerCase() == this.rank ) {
-			return "black";
+			return "b";
 		} else {
-			return "red";
+			return "r";
 		}
 	}
 
@@ -153,11 +170,11 @@ export class Txcch_Piece extends Entity {
 			arr[2] = arr[4] = 7/7;
 		} 
 
-		if ( sidecolor == "black" ) {
+		if ( sidecolor == "b" ) {
 			arr[1] = arr[3] = 0/2;
 			arr[5] = arr[7] = 1/2;
 
-		} else if ( sidecolor == "red" ) {
+		} else if ( sidecolor == "r" ) {
 			arr[1] = arr[3] = 1/2;
 			arr[5] = arr[7] = 2/2;
 		}
