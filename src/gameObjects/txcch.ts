@@ -1,6 +1,13 @@
 
-import { Txcch_Piece } from "src/gameObjects/txcch_piece"
+
+
+
 import resources from "src/resources";
+
+import { Txcch_Piece } from "src/gameObjects/txcch_piece"
+import { Txcch_Guide } from "src/gameObjects/txcch_guide"
+import { Xiangqi } from "src/gameObjects/xiangqi"
+
 
 
 export class Txcch extends Entity {
@@ -14,9 +21,16 @@ export class Txcch extends Entity {
 
 	public pieces_size:number = 0.07;
 	public pieces_height:number = 0.009;
-
-	public current_state_FEN = "rheakaehr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RHEAKAEHR";
 	public pieces_arr:Txcch_Piece[] = [];
+
+	public xq_logic:Xiangqi;
+
+
+	public guide_pieces_size:number = 0.07;
+	public guide_pieces_height:number = 0.02;
+	public guide_pieces_arr = [];
+
+	public current_selection:string;
 
 
 	constructor(
@@ -46,11 +60,38 @@ export class Txcch extends Entity {
 
 		engine.addEntity( board_entity );
 		
+		this.xq_logic = new Xiangqi(null);
 
 
-		this.create_pieces_from_FEN_string( this.current_state_FEN );
-		this.resort_board_with_FEN_string(  "4kaR2/4a4/3hR4/7H1/9/9/9/9/4Ap1r1/3AK3c" );
+		this.create_pieces_from_FEN_string( this.xq_logic.generate_fen() );
+		this.create_guide_pieces();
+		
+	}
 
+
+
+
+	//----------------
+	public create_guide_pieces() {
+
+		for ( let i = 0 ; i < 20 ; i++ ) {
+
+			let guide_piece = new Txcch_Guide({
+			    	
+	    			position: new Vector3 ( 
+	    				0 + this.pieces_pos_offset_x , 
+	    				-999 , 
+	    				0 + this.pieces_pos_offset_z 
+	    			),
+	    			scale: new Vector3( 
+	    				this.guide_pieces_size, 
+	    				this.guide_pieces_height, 
+	    				this.guide_pieces_size
+	    			),
+	  			}, 0 , 0 , this );
+
+	  		this.guide_pieces_arr.push( guide_piece );	
+		}
 	}
 
 
@@ -72,7 +113,7 @@ export class Txcch extends Entity {
 
 				col += parseInt( FEN_str[i] );
 
-			} else if ( FEN_str[i] != "/" && !/[0-9]/.test(FEN_str[i]) ) {
+			} else if ( /[KkAaBbNnRrCcPp]/.test(FEN_str[i]) == true ) {
 				
 				let txcch_piece = new Txcch_Piece( {
 			    	
@@ -86,37 +127,46 @@ export class Txcch extends Entity {
 	    				this.pieces_height, 
 	    				this.pieces_size
 	    			),
-	  			},  FEN_str[i] , col , row );
+	  			},  FEN_str[i] , col , 9 - row , this );
 
-	  			txcch_piece.setParent( this );
-	  			
-	  			
 	  			this.pieces_arr.push( txcch_piece );
 	  			col += 1;
+
+	  		} else if ( FEN_str[i] == " " ) {
+	  			break;
 	  		}
   		}
 	}
 
-	//-----------
-	public find_piece_from_arr( rank:string ):Txcch_Piece {
 
-		for ( let i = 0 ; i < this.pieces_arr.length ; i++ ) {
-			if ( this.pieces_arr[i].rank == rank && this.pieces_arr[i].row == -2 ) {
-				return this.pieces_arr[i];
-			}
-		}
-		return null;
-	}
+	
 
 
 	//-----------
 	public clear_board( ) {
 
+		this.clear_guides();
 		for ( let i = 0 ; i < this.pieces_arr.length ; i++ ) {
 			this.pieces_arr[i].setPosition( 
 				new Vector3 ( 
 					( (0 + Math.floor( i / 10 ) ) * this.grid_size_x ) + this.pieces_pos_offset_x , 
 					-0.15 + this.pieces_pos_offset_y , 
+					( ( i % 10) * this.grid_size_y ) + this.pieces_pos_offset_z 
+				), 
+				-2, 
+				-2 
+			);
+		}
+	}
+
+	//-----
+	public clear_guides( ) {
+
+		for ( let i = 0 ; i < this.guide_pieces_arr.length ; i++ ) {
+			this.guide_pieces_arr[i].setPosition( 
+				new Vector3 ( 
+					( (0 + Math.floor( i / 10 ) ) * this.grid_size_x ) + this.pieces_pos_offset_x , 
+					-99 + this.pieces_pos_offset_y , 
 					( ( i % 10) * this.grid_size_y ) + this.pieces_pos_offset_z 
 				), 
 				-2, 
@@ -145,9 +195,10 @@ export class Txcch extends Entity {
 
 				col += parseInt( FEN_str[i] );
 
-			} else if ( FEN_str[i] != "/" && !/[0-9]/.test(FEN_str[i]) ) {
+			} else if ( /[KkAaBbNnRrCcPp]/.test(FEN_str[i]) == true ) {
 				
-				let txcch_piece = this.find_piece_from_arr( FEN_str[i] );
+				
+				let txcch_piece = this.get_piece_by_rank( FEN_str[i] );
 				if ( txcch_piece != null ) {
 					txcch_piece.setPosition( 
 						new Vector3 ( 
@@ -156,13 +207,128 @@ export class Txcch extends Entity {
 	    					((9 - row) * this.grid_size_y ) + this.pieces_pos_offset_z 
 	    				), 
 	    				col, 
-	    				row 
+	    				9 - row 
 	    			);
 				}
 	  			col += 1;
+
+	  		} else if ( FEN_str[i] == " " ) {
+	  			break;
+	  		
 	  		}
   		}
 	}
 
 
+
+	//-----------
+	public get_piece_by_rank( rank:string ):Txcch_Piece {
+
+		for ( let i = 0 ; i < this.pieces_arr.length ; i++ ) {
+			if ( this.pieces_arr[i].rank == rank && this.pieces_arr[i].row == -2 ) {
+				return this.pieces_arr[i];
+			}
+		}
+		return null;
+	}
+
+	//------------
+	public get_piece_by_col_row( col , row ):Txcch_Piece {
+
+		for ( let i = 0 ; i < this.pieces_arr.length ; i++ ) {
+			if ( this.pieces_arr[i].col == col && this.pieces_arr[i].row == row ) {
+				return this.pieces_arr[i];
+			}
+		}
+		return null;
+	}
+
+
+	//-----------
+	public move_piece( frm_col, frm_row, to_col , to_row ) {
+
+
+		let dst_piece = this.get_piece_by_col_row( to_col , to_row );
+		if ( dst_piece != null ) {
+			dst_piece.setPosition( 
+				new Vector3 ( 
+					( -1 * this.grid_size_x ) + this.pieces_pos_offset_x , 
+					-0.15 + this.pieces_pos_offset_y , 
+					( to_col * this.grid_size_y ) + this.pieces_pos_offset_z 
+				), 
+				-2, 
+				-2 
+			);
+
+			log( to_col , to_row, "has", dst_piece.rank , " eating it" );
+
+		} else {
+			log( to_col , to_row, "has nothing");
+		}
+
+		let src_piece = this.get_piece_by_col_row( frm_col , frm_row );
+		if ( src_piece != null ) {
+			src_piece.setPosition( 
+				new Vector3 ( 
+					(to_col * this.grid_size_x ) + this.pieces_pos_offset_x , 
+					this.pieces_pos_offset_y , 
+					(to_row * this.grid_size_y ) + this.pieces_pos_offset_z 
+				), 
+				to_col, 
+				to_row 
+			);
+		}
+
+	}
+
+
+	//------------------
+	public children_pieces_onclick( col , row , rank ) {
+
+		log( "children_pieces_onclick", rank , col, row );
+
+		if ( rank != null ) {
+			// Clicked on pieces
+			this.clear_guides();	
+
+			this.current_selection = "abcdefghi"[col] + row
+			let moves_possible = this.xq_logic.moves({square: this.current_selection});
+
+			for ( let i = 0 ; i < moves_possible.length ; i++ ) {
+				
+				let newcol = "abcdefghi".indexOf( moves_possible[i][2] ); 
+				let newrow = parseInt( moves_possible[i][3] );
+
+				this.guide_pieces_arr[i].setPosition(
+					new Vector3(
+						(newcol * this.grid_size_x ) + this.pieces_pos_offset_x , 
+	    				this.pieces_pos_offset_y , 
+	    				(newrow * this.grid_size_y ) + this.pieces_pos_offset_z 
+					),
+					newcol,
+					newrow
+				);
+			}
+
+		} else {
+			// Clicked on guides 
+			let moving_to = "abcdefghi"[col] + row
+			
+			log( this.current_selection + moving_to );
+
+
+			if ( this.xq_logic.move( this.current_selection + moving_to , undefined ) != null ) {
+
+				
+				let fr_col = "abcdefghi".indexOf( this.current_selection[0] );
+				let fr_row = parseInt( this.current_selection[1] );
+
+				log("Move approved ", this.current_selection + moving_to , fr_col , fr_row, col , row);
+				this.move_piece( fr_col , fr_row , col , row );
+				this.clear_guides();
+				this.current_selection = "";
+			}
+
+		}
+	}
 }

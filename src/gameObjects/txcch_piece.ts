@@ -1,6 +1,7 @@
 
 
 import resources from "src/resources";
+import { Txcch } from "src/gameObjects/txcch";
 
 export class Txcch_Piece extends Entity {
 	
@@ -8,12 +9,14 @@ export class Txcch_Piece extends Entity {
 	public col:number;
 	public row:number;
 	public transform:Transform;
+	public parent:Txcch;
 	
 	constructor(
 			transform_args: TranformConstructorArgs,
 			rank:string,
 			col:number,
-			row:number
+			row:number,
+			parent:Txcch
 	) {
 
 		super();
@@ -22,6 +25,8 @@ export class Txcch_Piece extends Entity {
 		this.rank = rank;
 		this.row  = row;
 		this.col  = col;
+		this.parent = parent;
+
 		
 		let shape 	= new CylinderShape();
 		shape.radiusBottom = 1;
@@ -30,7 +35,8 @@ export class Txcch_Piece extends Entity {
 		this.transform = new Transform( transform_args )
 		this.addComponent( shape );
 		this.addComponent( this.transform );
-		
+		this.setParent( parent );
+	  			
 
 		let face_entity 	= new Entity();
 		let face_shape 		= new PlaneShape();
@@ -53,6 +59,12 @@ export class Txcch_Piece extends Entity {
 		face_entity.addComponent( face_shape );
 		face_entity.addComponent( face_transform );
 		face_entity.addComponent( face_material );
+
+		face_entity.addComponent(
+			new OnPointerDown((e) => {
+				this.parent.children_pieces_onclick( this.col , this.row , this.rank );
+			})
+		)
 		
 	}
 
@@ -115,7 +127,7 @@ export class Txcch_Piece extends Entity {
 			arr[0] = arr[6] = 1/7;
 			arr[2] = arr[4] = 2/7;
 
-		} else if ( this.rank.toUpperCase() == "E" ) {
+		} else if ( this.rank.toUpperCase() == "B" ) {
 			
 			arr[0] = arr[6] = 3/7;
 			arr[2] = arr[4] = 4/7;
@@ -125,7 +137,7 @@ export class Txcch_Piece extends Entity {
 			arr[0] = arr[6] = 4/7;
 			arr[2] = arr[4] = 5/7;
 
-		} else if ( this.rank.toUpperCase() == "H" ) {
+		} else if ( this.rank.toUpperCase() == "N" ) {
 
 			arr[0] = arr[6] = 2/7;
 			arr[2] = arr[4] = 3/7;

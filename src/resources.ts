@@ -9,7 +9,7 @@ export default {
   },
   textures: {
   	chessboard: new Texture("models/txcch/xiangqiboard.png"),
-  	chessface: new Texture("models/txcch/xiangqipiece.png")
+  	chessface:  new Texture("models/txcch/xiangqipiece.png")
   }
 };
 
