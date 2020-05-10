@@ -34,8 +34,8 @@ export class Txcch_Guide extends Entity {
 		this.addComponent( this.transform );
 
 		// Change to red color 
-		let material = new Material()
-		material.albedoColor = Color3.Red()
+		let material = new Material();
+		material.albedoColor = Color3.Red();
 		this.addComponent( material );
 
 		this.setParent( parent );

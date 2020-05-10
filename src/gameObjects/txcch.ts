@@ -6,8 +6,14 @@ import resources from "src/resources";
 
 import { Txcch_Piece } from "src/gameObjects/txcch_piece"
 import { Txcch_Guide } from "src/gameObjects/txcch_guide"
+import { Txclickable_box } from "src/gameObjects/txclickable_box"
+
 import { Xiangqi } from "src/gameObjects/xiangqi"
 
+
+type EmitArg = {
+	notation: string
+};
 
 
 export class Txcch extends Entity {
@@ -31,6 +37,11 @@ export class Txcch extends Entity {
 	public guide_pieces_arr = [];
 
 	public current_selection:string;
+	public table_text:TextShape;
+	public table_text_transform:Transform;
+	
+	public reset_button:Txclickable_box;
+	public tableMessageBus:MessageBus;
 
 
 	constructor(
@@ -65,11 +76,52 @@ export class Txcch extends Entity {
 
 		this.create_pieces_from_FEN_string( this.xq_logic.generate_fen() );
 		this.create_guide_pieces();
-		this.reset_clickable();
+		
+
+		let text_entity 	= new Entity();
+		let text_shape 		= new TextShape("");
+		text_shape.color    = Color3.Blue();
+		let text_transform 	= new Transform({
+			position : new Vector3 ( 0,  1.2 , 0 ), 
+    		scale    : new Vector3 ( 0.2,  0.2,  0.2 )
+		});
+		text_entity.addComponent(text_shape);
+		text_entity.addComponent(text_transform);
+		text_entity.setParent( this);
+		engine.addEntity( text_entity );
+
+		this.table_text = text_shape;
+		this.table_text_transform = text_transform;
+
+		this.reset_button = new Txclickable_box(
+			"reset_button",	
+			{
+				position : new Vector3 ( 0,  0.75 , 0 ), 
+    			scale    : new Vector3 ( 0.3, 0.2, 0.1 )
+			},
+			this
+		);
+
+
+		this.tableMessageBus = new MessageBus();
+		this.tableMessageBus.on("move", (info: EmitArg) => {
+			this.move_by_notation( info.notation);
+		});
+		this.tableMessageBus.on("reset", (info: EmitArg) => {
+			this.reset_table(false);
+		});
+		this.reset_table(false);
 		
 	}
 
 
+	//--------------------------
+	// This is like a timer
+	update(dt: number) {
+		this.table_text_transform.rotate(Vector3.Up(), dt * 10);
+		this.reset_button.update(dt);
+    }
+  
 
 
 	//----------------
@@ -281,6 +333,62 @@ export class Txcch extends Entity {
 
 	}
 
+
+	//-------------
+	public reset_table( do_emit ) {
+
+		this.xq_logic.load( this.xq_logic.DEFAULT_POSITION , false );
+		this.resort_board_with_FEN_string( this.xq_logic.DEFAULT_POSITION );
+		this.render_current_turn();
+
+		const action: EmitArg = {
+			notation:""
+		}
+		if ( do_emit == true ) {
+			this.tableMessageBus.emit( "reset", action );
+		}
+	}
+
+	//-------------
+	public render_current_turn( ) {
+
+		this.reset_table_txt();
+		this.reset_clickable();
+	}
+
+	//------------
+	public reset_table_txt() {
+
+		let show_str:string = "";
+
+		if ( this.xq_logic.in_checkmate() ) {
+
+			show_str += "Check Mate\n";
+			if ( this.xq_logic.turn == "r" ) {
+				show_str += " Black Wins";
+				this.table_text.color = Color3.Black();
+			} else {
+				show_str += " Red Wins";
+				this.table_text.color = Color3.Red();
+			}
+
+		} else {
+
+			if ( this.xq_logic.turn == "r" ) {
+				show_str +=  "Red's turn.\n";
+				this.table_text.color = Color3.Red();
+			} else {
+				show_str +=  "Black's turn.\n";
+				this.table_text.color = Color3.Black();
+			}
+			if ( this.xq_logic.in_check() ) {
+				show_str += " (In Check)";	
+			}
+		}		
+
+		this.table_text.value = show_str;	
+	}
+
 	//-----------
 	public reset_clickable() {
 
@@ -291,9 +399,37 @@ export class Txcch extends Entity {
 				this.pieces_arr[i].disable_clickable();
 			}
 		}
+		
+	}
+
+	
+	//--------------
+	public move_by_notation( notation:string ) {
+
+		if ( this.xq_logic.move( notation , undefined ) != null ) {
+
+			let fr_col = "abcdefghi".indexOf( notation[0] );
+			let fr_row = parseInt( notation[1] );
+			let to_col = "abcdefghi".indexOf( notation[2] );
+			let to_row = parseInt( notation[3] );
+
+			log("Move action: ", notation , fr_col , fr_row, to_col , to_row);
+
+			this.move_piece( fr_col , fr_row , to_col , to_row );
+			this.clear_guides();
+			this.current_selection = "";
+			this.render_current_turn();
+			
+		}
 	}
 
 
+	//---------------
+	public txclickable_button_onclick( id:string ) {
+		if ( id == "reset_button" ) {
+			this.reset_table( true );
+		}
+	}
 
 	//------------------
 	public children_pieces_onclick( col , row , rank ) {
@@ -324,24 +460,18 @@ export class Txcch extends Entity {
 			}
 
 		} else {
+			
 			// Clicked on guides 
 			let moving_to = "abcdefghi"[col] + row
-			
-			log( this.current_selection + moving_to );
+			let notation  = this.current_selection + moving_to ;
+			//log( notation );
 
-
-			if ( this.xq_logic.move( this.current_selection + moving_to , undefined ) != null ) {
-
-				
-				let fr_col = "abcdefghi".indexOf( this.current_selection[0] );
-				let fr_row = parseInt( this.current_selection[1] );
-
-				//log("Move approved ", this.current_selection + moving_to , fr_col , fr_row, col , row);
-				this.move_piece( fr_col , fr_row , col , row );
-				this.clear_guides();
-				this.current_selection = "";
-				this.reset_clickable();
+			const action: EmitArg = {
+				notation:notation
 			}
+			this.tableMessageBus.emit( "move", action );
+			this.move_by_notation( notation );
+				
 
 		}
 	}

@@ -51,8 +51,14 @@ export class Txcch_Piece extends Entity {
 
 		face_entity.setParent( this );
 		face_material.texture = resources.textures.chessface;
-		face_transform.rotation.eulerAngles = new Vector3( 90, 180, 0);
-		
+
+		if ( this.get_sidecolor_from_rank() == 'r' ) {
+			face_transform.rotation.eulerAngles = new Vector3( 90, 180, 0);
+		} else {
+			face_transform.rotation.eulerAngles = new Vector3( 90, 180, 180);
+		}
+
+
 		face_shape.uvs = this.get_uv_coords();
 
 		

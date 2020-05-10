@@ -7,8 +7,16 @@ const txcch_board = new Txcch({
     scale: new Vector3( 2, 2, 2),
 });
 
+// Define the system
+export class UpdateSystem implements ISystem {
+	//Executed ths function on every frame
+	update(dt: number) {
+  		txcch_board.update(dt);
+	}
+}
 
-
+// Add system to engine
+engine.addSystem(new UpdateSystem())
 
 
 
