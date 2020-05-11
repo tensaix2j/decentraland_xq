@@ -52,6 +52,7 @@ export class Txclickable_box extends Entity {
 		text_entity.setParent( this);
 		engine.addEntity( text_entity );
 		
+		
 
 	}
 

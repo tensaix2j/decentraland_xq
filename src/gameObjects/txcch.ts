@@ -7,17 +7,15 @@ import resources from "src/resources";
 import { Txcch_Piece } from "src/gameObjects/txcch_piece"
 import { Txcch_Guide } from "src/gameObjects/txcch_guide"
 import { Txclickable_box } from "src/gameObjects/txclickable_box"
-
 import { Xiangqi } from "src/gameObjects/xiangqi"
+import {EmitArg} from "src/gameObjects/txcch_busmessage"
 
 
-type EmitArg = {
-	notation: string
-};
 
 
 export class Txcch extends Entity {
 
+	public id:string;
 	public pieces_pos_offset_x:number = -0.88;
 	public pieces_pos_offset_y:number =  0.03;
 	public pieces_pos_offset_z:number = -0.90;
@@ -41,16 +39,40 @@ export class Txcch extends Entity {
 	public table_text_transform:Transform;
 	
 	public reset_button:Txclickable_box;
+
+	public userID:string;
 	public tableMessageBus:MessageBus;
+	public fen_obtained = false;
+
+	//public apiurl 		= "https://meeiot.org"
+	//public corsanywhere 	= "https://cors-anywhere.herokuapp.com"
+	
+
+	public apiurl2 			= "https://meeiot.org"
+	public api_tokenkey2 	= "5de5bc29b1aad4bdf61d72b8611350234d4a702a2e699ae98051d7"
+	public api_putaction2 	= "put"
+	public api_getaction2 	= "get"
+	public api_kvsep2 		= "=";
+	
+	public apiurl 			= "https://keyvalue.immanuel.co/api/KeyVal";
+	public api_tokenkey 	= "2c0kbdqk";
+	public api_getaction 	= "GetValue";
+	public api_putaction 	= "UpdateValue";
+	public api_kvsep 		= "/";
+	
 
 
 	constructor(
-		transform: TranformConstructorArgs
+		id: string,
+		transform: TranformConstructorArgs,
+		userID:string
 	) {
 
 		super();
 		engine.addEntity(this);
 
+		this.id = id;
+		this.userID = userID;
 		this.addComponent( new Transform( transform ) );
 		
 		let board_entity 	= new Entity();
@@ -102,17 +124,105 @@ export class Txcch extends Entity {
 			this
 		);
 
-
-		this.tableMessageBus = new MessageBus();
-		this.tableMessageBus.on("move", (info: EmitArg) => {
-			this.move_by_notation( info.notation);
-		});
-		this.tableMessageBus.on("reset", (info: EmitArg) => {
-			this.reset_table(false);
-		});
 		this.reset_table(false);
 		
+		// Try to get from internet current FEN
+		this.global_get_FEN();
+		
 	}
+
+	//-------------------
+	public setMessageBus( messageBus:MessageBus ) {
+		this.tableMessageBus = messageBus;
+	}	
+
+	//-----------------
+	public global_save_FEN() {
+		
+		let value   		= encodeURIComponent( "FENSIG" + this.xq_logic.generate_fen().replace(/\//g,"ZZ").replace(/\ /g,"YY") ); 
+		let url 			= this.apiurl + "/" + this.api_putaction +  "/" + this.api_tokenkey + "/fen," + this.id + this.api_kvsep +  value ; 
+		
+		log( "save_FEN" , url );
+
+		executeTask(async () => {
+			try {
+				
+				let response = await fetch(url, { method:'POST' } );
+				log("sent request to URL", this.apiurl , "SUCCESS" , response );
+
+			} catch {
+				
+				log("failed to reach URL", this.apiurl , "attempt to use 2nd option", this.apiurl2);
+				let url2 = this.apiurl2 + "/" + this.api_putaction2 +  "/" + this.api_tokenkey2 + "/fen," + this.id + this.api_kvsep2 +  value ; 
+				log( "save_FEN one more time" , url2 );
+
+				executeTask(async () => {
+					try {
+						let response = await fetch(url2, { method:'POST' } );
+						log("sent request to URL", this.apiurl2 , "SUCCESS" , response );
+					} catch {
+						log("failed to reach URL2, attempt to use 2nd option. Give up")
+					}
+				});				
+			}
+		});
+	}
+
+	//-----------------
+	public global_get_FEN() {
+		
+		let url 			= this.apiurl + "/" + this.api_getaction +  "/" + this.api_tokenkey + "/fen," + this.id ; 
+		
+		log( "global_get_FEN" , url );
+
+		executeTask(async () => {
+			try {
+				
+				let response = await fetch(url, { method:'GET' } )
+									.then(response => response.text())
+
+				log("sent request to URL", this.apiurl , "SUCCESS", this.id , response );
+				let responsetxt:string = response.replace(/\"/g,"");
+				if ( responsetxt.substring(0,6) == "FENSIG" ) {
+					let fen = decodeURIComponent(responsetxt).replace("FENSIG","").replace(/ZZ/g,"/").replace(/YY/g," ");
+					this.checkFEN( fen );
+				} else {
+					log( "The obtained string is not FEN", responsetxt);
+				}
+
+			} catch {
+				
+				log("failed to reach URL", this.apiurl , "attempt to use 2nd option", this.apiurl2);
+				let url2 = this.apiurl2 + "/" + this.api_getaction2 +  "/" + this.api_tokenkey2 + "/fen," + this.id ; 
+				log( "global_get_FEN one more time" , url2 );
+
+				executeTask(async () => {
+					try {
+						let response = await fetch(url2, { method:'GET' } )
+										.then(response => response.text())
+
+						log("sent request to URL", this.apiurl2 , "SUCCESS" , this.id, response );
+						
+						let responsetxt:string = response.replace(/\"/g,"");
+						if ( responsetxt.substring(0,6) == "FENSIG" ) {
+							let fen = decodeURIComponent(responsetxt).replace("FENSIG","").replace(/ZZ/g,"/").replace(/YY/g," ");
+							this.checkFEN( fen );
+						} else {
+							log( "The obtained string is not FEN", responsetxt);
+						}
+
+
+					} catch {
+						log("failed to reach URL2, attempt to use 2nd option. Give up")
+					}
+				});				
+			}
+		});
+	}
+
+
+
+
 
 
 	//--------------------------
@@ -120,7 +230,8 @@ export class Txcch extends Entity {
 	update(dt: number) {
 		this.table_text_transform.rotate(Vector3.Up(), dt * 10);
 		this.reset_button.update(dt);
-    }
+
+	}
   
 
 
@@ -342,10 +453,14 @@ export class Txcch extends Entity {
 		this.render_current_turn();
 
 		const action: EmitArg = {
-			notation:""
+			tableID: this.id,
+			userID: this.userID,
+			notation:"",
+			fen:""
 		}
-		if ( do_emit == true ) {
+		if ( do_emit == true && this.tableMessageBus != null ) {
 			this.tableMessageBus.emit( "reset", action );
+			this.global_save_FEN();
 		}
 	}
 
@@ -402,9 +517,21 @@ export class Txcch extends Entity {
 		
 	}
 
+
+	//----------
+	public checkFEN( fen:string ) {
+
+		if ( this.xq_logic.generate_fen() != fen ) {
+
+			log("Fen not the same, readjust table");
+			this.xq_logic.load( fen, false );
+			this.resort_board_with_FEN_string( fen );
+			this.render_current_turn();
+		}
+	}	
 	
 	//--------------
-	public move_by_notation( notation:string ) {
+	public move_by_notation( notation:string , do_emit ) {
 
 		if ( this.xq_logic.move( notation , undefined ) != null ) {
 
@@ -419,6 +546,19 @@ export class Txcch extends Entity {
 			this.clear_guides();
 			this.current_selection = "";
 			this.render_current_turn();
+
+			if ( do_emit == true ) {
+				const action: EmitArg = {
+					tableID: this.id,
+					userID: this.userID,
+					notation:notation,
+					fen: this.xq_logic.generate_fen()
+				}
+				if ( this.tableMessageBus != null ) {
+					this.tableMessageBus.emit( "move", action );
+				}
+				this.global_save_FEN();
+			}
 			
 		}
 	}
@@ -466,11 +606,7 @@ export class Txcch extends Entity {
 			let notation  = this.current_selection + moving_to ;
 			//log( notation );
 
-			const action: EmitArg = {
-				notation:notation
-			}
-			this.tableMessageBus.emit( "move", action );
-			this.move_by_notation( notation );
+			this.move_by_notation( notation , true );
 				
 
 		}
