@@ -68,9 +68,12 @@ export class Txcch_Piece extends Entity {
 		face_entity.addComponent( face_transform );
 		face_entity.addComponent( face_material );
 
-		this.clickable = new OnPointerDown((e) => {
-			this.parent.children_pieces_onclick( this.col , this.row , this.rank );
-		})
+		this.clickable = new OnPointerDown(
+			(e) => {
+				this.parent.children_pieces_onclick( this.col , this.row , this.rank );
+			}
+	    );
+
 		this.face_entity = face_entity;
 			
 	}

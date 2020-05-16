@@ -16,6 +16,9 @@ import {EmitArg} from "src/gameObjects/txcch_busmessage"
 export class Txcch extends Entity {
 
 	public id:string;
+	public transform:Transform;
+
+
 	public pieces_pos_offset_x:number = -0.88;
 	public pieces_pos_offset_y:number =  0.03;
 	public pieces_pos_offset_z:number = -0.90;
@@ -60,11 +63,10 @@ export class Txcch extends Entity {
 	public api_putaction 	= "UpdateValue";
 	public api_kvsep 		= "/";
 	
-
-
+	
 	constructor(
 		id: string,
-		transform: TranformConstructorArgs,
+		transform_args: TranformConstructorArgs,
 		userID:string
 	) {
 
@@ -73,7 +75,9 @@ export class Txcch extends Entity {
 
 		this.id = id;
 		this.userID = userID;
-		this.addComponent( new Transform( transform ) );
+		this.transform = new Transform( transform_args );
+
+		this.addComponent(  this.transform );
 		
 		let board_entity 	= new Entity();
 		let board_shape  	= new BoxShape();
@@ -129,6 +133,8 @@ export class Txcch extends Entity {
 		// Try to get from internet current FEN
 		this.global_get_FEN();
 		
+		
+
 	}
 
 	//-------------------
@@ -136,6 +142,7 @@ export class Txcch extends Entity {
 		this.tableMessageBus = messageBus;
 	}	
 
+	
 	//-----------------
 	public global_save_FEN() {
 		
@@ -502,6 +509,7 @@ export class Txcch extends Entity {
 		}		
 
 		this.table_text.value = show_str;	
+
 	}
 
 	//-----------
